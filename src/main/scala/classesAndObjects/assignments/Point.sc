@@ -1,6 +1,7 @@
+case class Foo[A,B](S => [A,B])
 case class Point(x: Int, y:Int) {
 
-  def distanceTo(p: Point) = Math.sqrt(Math.pow(this.x - p.x,2)+Math.pow(this.y - p.y,2))
+  def distanceTo(p: Point) = Math.sqrt(Math.pow(x - p.x,2)+Math.pow(y - p.y,2))
   override def toString = s"(x=$x,y=$y)"
 }
 //object Point {
