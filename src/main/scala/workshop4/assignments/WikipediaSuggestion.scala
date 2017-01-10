@@ -24,6 +24,7 @@ import javafx.scene.control.{Button, ListView, TextField}
 import javafx.scene.layout.{HBox, VBox}
 import javafx.stage.{Stage, WindowEvent}
 
+import com.sun.deploy.net.URLEncoder
 import org.apache.commons.lang3.StringUtils
 import org.json4s.JsonAST.{JArray, JString}
 import org.json4s.native.JsonMethods
@@ -44,12 +45,21 @@ class WikipediaSuggestion extends Application {
   }
 
   def searchWikipedia(word: String): Observable[List[String]] = {
-    def urlifyWord(word: String): String = {
-      word.replace(" ", "%20")
-    }
 
-    val url = s"https://en.wikipedia.org/w/api.php?action=opensearch&search=${urlifyWord(word)}"
-    Observable.using(Source.fromURL(url))(r => Observable.just(r.mkString), _.close(), disposeEagerly = true)
+    Observable
+      .using(
+        Source.fromURL(s"https://en.wikipedia.org/w/api.php?action=opensearch&search=${URLEncoder.encode(word, "UTF-8")}")
+      )(r => Observable.just(r.mkString),
+        _.close(),
+        disposeEagerly = true
+      )
+      .onErrorResumeNext(t => Observable.just(
+        s"""
+           |["sdf",
+           |  ["$t"]
+           |]
+           |""".stripMargin
+      ))
       .map(parseJSON)
   }
 
@@ -65,16 +75,34 @@ class WikipediaSuggestion extends Application {
       setPadding(new Insets(10))
     }
 
-    val searchSubscription: Subscription = ???
+    val textFieldObs: Observable[String] = JavaFxObservable
+      .fromObservableValue(textField.textProperty()).asScala
 
-    JavaFxObservable.fromWindowEvents(stage, WindowEvent.WINDOW_CLOSE_REQUEST).asScala
-      .subscribe(_ => {
+    val searchSubscription: Subscription = JavaFxObservable
+      .fromNodeEvents(button, ActionEvent.ACTION)
+      .asScala
+      .withLatestFrom(textFieldObs)((_, text) => text)
+      .filter(!StringUtils.isBlank(_))
+      .distinctUntilChanged
+      .doOnNext(request => println(s"requested: $request"))
+      .flatMap(searchWikipedia)
+      .doOnNext(response => {
+        println(s"response: $response")
+        items.clear()
+        response.foreach(items.add)
+      })
+      .subscribe()
+
+    JavaFxObservable
+      .fromWindowEvents(stage, WindowEvent.WINDOW_CLOSE_REQUEST)
+      .asScala
+      .subscribe{_ =>
         println("bye bye")
         if (searchSubscription == null) {
           println("boom")
         }
         searchSubscription.unsubscribe()
-      })
+      }
 
     stage.setScene(new Scene(root, 300, 400))
     stage.setTitle("Dictionary Suggestions")

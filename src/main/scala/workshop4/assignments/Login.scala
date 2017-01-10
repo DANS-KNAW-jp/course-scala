@@ -47,12 +47,12 @@ class Login extends Application {
       setPadding(new Insets(10))
     }
 
-    val usernameObs: Observable[String] = JavaFxObservable.fromObservableValue(usernameTF.textProperty()).asScala
-    val passwordObs: Observable[String] = JavaFxObservable.fromObservableValue(passwordTF.textProperty()).asScala
-    val buttonObs: Observable[ActionEvent] = JavaFxObservable.fromNodeEvents(button, ActionEvent.ACTION).asScala
+    val usernameObs: Observable[String] = JavaFxObservable.fromObservableValue(usernameTF.textProperty()).asScala.doOnNext(x => println(s"username $x"))
+    val passwordObs: Observable[String] = JavaFxObservable.fromObservableValue(passwordTF.textProperty()).asScala.doOnNext(x => println(s"password $x"))
+    val buttonObs: Observable[ActionEvent] = JavaFxObservable.fromNodeEvents(button, ActionEvent.ACTION).asScala.doOnNext(x => println(s"button $x"))
 
-    val credentialsObs = usernameObs.combineLatestWith(passwordObs)((username, password) => Credentials(username, password))
-    val logins = buttonObs.withLatestFrom(credentialsObs)((_, creds) => creds)
+    val credentialsObs = usernameObs.combineLatestWith(passwordObs)((username, password) => Credentials(username, password)).doOnNext(x => println(s"combined u/p $x"))
+    val logins = buttonObs.withLatestFrom(credentialsObs)((_, creds) => creds).doOnNext(x => println(s"combined login $x"))
 
     logins.subscribe(creds => label.setText(s"latest login: $creds"))
 

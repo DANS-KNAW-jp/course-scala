@@ -30,7 +30,9 @@ trait DiscardThirdElement {
    * @tparam T the type of elements in the `Observable`
    * @return an `Observable` that skips every third element emitted by `obs`
    */
-  def discardThirdBuffer[T](obs: Observable[T]): Observable[T] = ???
+  def discardThirdBuffer[T](obs: Observable[T]): Observable[T] = {
+    obs.slidingBuffer(2,3).flatMap(i => Observable.just(i(0), i(1)))
+  }
 
   /**
    * Given an `Observable[T]` called `obs`, returns an `Observable[T]` that skips every third element that is emitted by `obs`.
