@@ -37,26 +37,30 @@ import scala.language.{implicitConversions, postfixOps}
 
 class WikipediaSuggestion extends Application {
 
-  def parseJSON(json: String): List[String] = {
+  def parseJSON(json: String): List[String] = try {
     for {
       JArray(child) <- JsonMethods.parse(json)(1)
       JString(word) <- child
     } yield word
+  } catch {
+    case t: Throwable => List(s"got $t when parsing: $json ")
   }
 
   def searchWikipedia(word: String): Observable[List[String]] = {
 
+    val url = s"https://en.wikipedia.org/w/api.php?action=opensearch&search=${URLEncoder.encode(word, "UTF-8")}"
     Observable
-      .using(
-        Source.fromURL(s"https://en.wikipedia.org/w/api.php?action=opensearch&search=${URLEncoder.encode(word, "UTF-8")}")
-      )(r => Observable.just(r.mkString),
+      .using(Source.fromURL(url))(
+        r => Observable.just(r.mkString),
         _.close(),
         disposeEagerly = true
       )
       .onErrorResumeNext(t => Observable.just(
         s"""
            |["sdf",
-           |  ["$t"]
+           |  ["got $t",
+           |   "on $url"
+           |  ]
            |]
            |""".stripMargin
       ))
